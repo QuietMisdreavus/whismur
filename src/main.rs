@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use irc::client::prelude::*;
 
+#[derive(Debug)]
 struct Discourse {
     last_mention: Instant,
     record: Option<u64>,
@@ -22,12 +23,8 @@ impl Discourse {
         self.last_mention.elapsed().as_secs() / (60 * 60 * 24)
     }
 
-    fn seconds_since_last(&self) -> u64 {
-        self.last_mention.elapsed().as_secs()
-    }
-
     fn reset(&mut self) {
-        let current = Some(self.seconds_since_last());
+        let current = Some(self.days_since_last());
         self.last_mention = Instant::now();
         self.record = std::cmp::max(self.record, current);
     }
@@ -78,18 +75,25 @@ fn main() {
                     };
 
                     if let Some(cmd) = cmd {
-                        let disco = disco_tracker.entry(cmd.to_lowercase())
-                                                 .or_insert_with(Discourse::new);
+                        let tracker = disco_tracker.entry(target.to_owned())
+                                                   .or_insert_with(HashMap::new);
+                        let disco = tracker.entry(cmd.to_lowercase())
+                                           .or_insert_with(Discourse::new);
 
                         if let Some(record) = disco.record {
-                            disco.reset();
+                            let current = disco.days_since_last();
                             srv.send_notice(target,
-                                            &format!("It has been [{}] seconds since {} discussed \
+                                            &format!("It has been [{}] days since {} discussed \
                                                      \"{}\".",
-                                                      record, target, cmd)).unwrap();
+                                                      current, target, cmd)).unwrap();
                             srv.send_action(target,
-                                            &format!("erases the board, writes [0]")).unwrap();
+                                            &format!("erases the board, writes 0")).unwrap();
+                            srv.send_notice(target,
+                                            &format!("The previous record was [{}] days.",
+                                                     record)).unwrap();
+                            disco.reset();
                         } else {
+                            disco.record = Some(0);
                             srv.send_notice(target,
                                             &format!("I don't know when the last time {} discussed \
                                                      \"{}\" was, but I'm tracking it now.",
