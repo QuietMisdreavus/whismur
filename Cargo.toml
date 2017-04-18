@@ -2,6 +2,7 @@
 name = "discourse-bot"
 version = "0.1.0"
 authors = ["QuietMisdreavus <grey@quietmisdreavus.net>"]
+license = "GPL-3.0+"
 
 [dependencies]
 irc = "0.11.6"
