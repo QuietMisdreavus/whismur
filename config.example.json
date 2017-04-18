@@ -1,0 +1,11 @@
+{
+	"nickname": "[myBot]",
+	"alt_nicks": ["[myBoot]", "[myBooot]"],
+	"username": "discourse-bot",
+	"realname": "discourse-bot",
+	"user_info": "I'm a bot!",
+	"owners": [],
+	"server": "irc.example.net",
+	"port": 6667,
+	"channels": ["#test"]
+}
