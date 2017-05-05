@@ -112,21 +112,15 @@ fn main() {
                             if let Some(record) = disco.record {
                                 let current = disco.days_since_last();
                                 srv.send_notice(target,
-                                                &format!("It has been [{}] days since {} discussed \
-                                                         \"{}\".",
-                                                         current, target, cmd)).unwrap();
-                                srv.send_action(target,
-                                                &format!("erases the board, writes 0")).unwrap();
-                                srv.send_notice(target,
-                                                &format!("The previous record was [{}] days.",
-                                                         record)).unwrap();
+                                                &format!("It has been [{}] days since {} \
+                                                         discussed \"{}\". Record: [{}]",
+                                                         current, target, cmd, record)).unwrap();
                                 disco.reset();
                             } else {
                                 disco.record = Some(0);
                                 srv.send_notice(target,
-                                                &format!("I don't know when the last time {} discussed \
-                                                         \"{}\" was, but I'm tracking it now.",
-                                                         target, cmd)).unwrap();
+                                                &format!("Now tracking \"{}\" for {}.",
+                                                         cmd, target)).unwrap();
                             }
                         }
 
