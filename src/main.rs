@@ -14,34 +14,42 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#[macro_use] extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
+extern crate chrono;
 extern crate irc;
 
-use std::time::Instant;
 use std::collections::HashMap;
+use std::fs::File;
+
+use chrono::{DateTime, UTC};
 
 use irc::client::prelude::*;
 
-#[derive(Debug)]
+const FILE_NAME: &'static str = "discourse.json";
+
+#[derive(Debug, Serialize, Deserialize)]
 struct Discourse {
-    last_mention: Instant,
+    last_mention: DateTime<UTC>,
     record: Option<u64>,
 }
 
 impl Discourse {
     fn new() -> Discourse {
         Discourse {
-            last_mention: Instant::now(),
+            last_mention: UTC::now(),
             record: None,
         }
     }
 
     fn days_since_last(&self) -> u64 {
-        self.last_mention.elapsed().as_secs() / (60 * 60 * 24)
+        UTC::now().signed_duration_since(self.last_mention).num_days() as u64
     }
 
     fn reset(&mut self) {
         let current = Some(self.days_since_last());
-        self.last_mention = Instant::now();
+        self.last_mention = UTC::now();
         self.record = std::cmp::max(self.record, current);
     }
 }
@@ -58,7 +66,11 @@ fn main() {
 
     let my_nick = srv.config().nickname.as_ref().unwrap().as_str();
 
-    let mut disco_tracker = HashMap::new();
+    let mut disco_tracker = if let Ok(f) = File::open(FILE_NAME) {
+        serde_json::from_reader(f).unwrap()
+    } else {
+        HashMap::new()
+    };
 
     for msg in srv.iter() {
         let msg = msg.unwrap();
@@ -91,29 +103,38 @@ fn main() {
                     };
 
                     if let Some(cmd) = cmd {
-                        let tracker = disco_tracker.entry(target.to_owned())
-                                                   .or_insert_with(HashMap::new);
-                        let disco = tracker.entry(cmd.to_lowercase())
-                                           .or_insert_with(Discourse::new);
+                        {
+                            let tracker = disco_tracker.entry(target.to_owned())
+                                .or_insert_with(HashMap::new);
+                            let disco = tracker.entry(cmd.to_lowercase())
+                                .or_insert_with(Discourse::new);
 
-                        if let Some(record) = disco.record {
-                            let current = disco.days_since_last();
-                            srv.send_notice(target,
-                                            &format!("It has been [{}] days since {} discussed \
-                                                     \"{}\".",
-                                                      current, target, cmd)).unwrap();
-                            srv.send_action(target,
-                                            &format!("erases the board, writes 0")).unwrap();
-                            srv.send_notice(target,
-                                            &format!("The previous record was [{}] days.",
-                                                     record)).unwrap();
-                            disco.reset();
-                        } else {
-                            disco.record = Some(0);
-                            srv.send_notice(target,
-                                            &format!("I don't know when the last time {} discussed \
-                                                     \"{}\" was, but I'm tracking it now.",
-                                                     target, cmd)).unwrap();
+                            if let Some(record) = disco.record {
+                                let current = disco.days_since_last();
+                                srv.send_notice(target,
+                                                &format!("It has been [{}] days since {} discussed \
+                                                         \"{}\".",
+                                                         current, target, cmd)).unwrap();
+                                srv.send_action(target,
+                                                &format!("erases the board, writes 0")).unwrap();
+                                srv.send_notice(target,
+                                                &format!("The previous record was [{}] days.",
+                                                         record)).unwrap();
+                                disco.reset();
+                            } else {
+                                disco.record = Some(0);
+                                srv.send_notice(target,
+                                                &format!("I don't know when the last time {} discussed \
+                                                         \"{}\" was, but I'm tracking it now.",
+                                                         target, cmd)).unwrap();
+                            }
+                        }
+
+                        match File::create(FILE_NAME) {
+                            Ok(f) => {
+                                serde_json::to_writer(f, &disco_tracker).unwrap();
+                            }
+                            Err(e) => println!("ERROR: couldn't open file for writing: {}", e),
                         }
                     }
                 }
