@@ -5,14 +5,12 @@ a bot to track The Discourse, on irc
 whismur started with a joke: "it has been [0] days since #rust-offtopic discussed communism". so i
 decided to actually track the count, and made a bot to do it for me.
 
-to flag whismur, start a message with its name, a comma or colon, then the topic itself. for
-example:
+to flag whismur, start a message with its name, followed by a comma or colon, then the topic itself.
+for example:
 
 ```text
 <misdreavus> [whismur]: communism
--[whismur]:#rust-offtopic- It has been [4] days since #rust-offtopic discussed "communism".
-* [whismur] erases the board, writes [0]
--[whismur]:#rust-offtopic- The previous record was [15] days.
+-[whismur]:#rust-offtopic- It has been [4] days since #rust-offtopic discussed "communism". Record: [15]
 ```
 
 telling whismur about The Discourse will automatically reset its timer. there is no way to ask about
