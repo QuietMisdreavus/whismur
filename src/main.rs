@@ -47,6 +47,13 @@ impl Discourse {
         UTC::now().signed_duration_since(self.last_mention).num_days() as u64
     }
 
+    fn fine_time_since_last(&self) -> (u64, u64, u64) {
+        let now = UTC::now();
+        (now.signed_duration_since(self.last_mention).num_hours() as u64,
+         now.signed_duration_since(self.last_mention).num_minutes() as u64 % 60,
+         now.signed_duration_since(self.last_mention).num_seconds() as u64 % 60)
+    }
+
     fn reset(&mut self) {
         let current = Some(self.days_since_last());
         self.last_mention = UTC::now();
@@ -111,10 +118,19 @@ fn main() {
 
                             if let Some(record) = disco.record {
                                 let current = disco.days_since_last();
-                                srv.send_notice(target,
-                                                &format!("It has been [{}] days since {} \
-                                                         discussed \"{}\". Record: [{}]",
-                                                         current, target, cmd, record)).unwrap();
+                                if current == 0 {
+                                    let (hour, min, sec) = disco.fine_time_since_last();
+                                    srv.send_notice(target,
+                                                    &format!("It has been {}:{:02}:{:02} since {} \
+                                                             discussed \"{}\". Record: [{}] days",
+                                                             hour, min, sec, target, cmd,
+                                                             record)).unwrap();
+                                } else {
+                                    srv.send_notice(target,
+                                                    &format!("It has been [{}] days since {} \
+                                                             discussed \"{}\". Record: [{}]",
+                                                             current, target, cmd, record)).unwrap();
+                                }
                                 disco.reset();
                             } else {
                                 disco.record = Some(0);
